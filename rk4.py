@@ -24,10 +24,10 @@ def g(mu, x, y):
     """
     return x + mu * y + y ** 3
 
-def F(Y, _t):
-    _x, _y = Y
-    mu = 0.1
-    return [mu * _x - _y + _x * _y ** 2, _x + mu * _y + _y ** 3]
+def F(mu, Y, f1, f2):
+    x, y = Y
+    # usually f1 = f, and f2 = g
+    return [f1(mu, x, y), f2(mu, x, y)]
 
 
 def rk4(t, _x, _y, h, mu, f1, f2):
@@ -68,48 +68,6 @@ def rk4(t, _x, _y, h, mu, f1, f2):
     t = t + h
     return t, _x, _y
 
-def grid_plot(mu):
-    """
-    Returns a quiver plot with labels and a mesh grid
-    over which the runge kutta solutions will be plotted
-    """
-    x = np.linspace(-2.0, 2.0, 20)
-    y = np.linspace(-2.0, 2.0, 20)
-    X, Y = np.meshgrid(x, y)
-    u, v = np.zeros(X.shape), np.zeros(Y.shape)
-    ni, nj = X.shape
-
-    for i in range(ni):
-        for j in range(nj):
-            x = X[i, j]
-            y = Y[i, j]
-            yprime = F([x, y], t)
-            u[i, j] = yprime[0]
-            v[i, j] = yprime[1]
-
-    Q = plt.quiver(X, Y, u, v, color='r')
-
-    plt.xlabel('$x$')
-    plt.ylabel('$y$')
-    plt.xlim([-2, 2])
-    plt.ylim([-2, 2])
-    return plt
-
-def _plot(plot, initial_conditions):
-    """
-    :params: plot: a pyplot object that is already created as a quiver
-    with a meshgrid . This function retrieves plot points data
-    from the aggregator and embedds them to the quiver plt object
-    :params: initial_conditions: a list of pregenerated initial conditions
-    """
-    for condition in initial_conditions:
-        t, _x, _y, step_size, steps = condition
-        mini_dict = aggregator(t, _x, _y, step_size, mu, steps)
-        x_points = mini_dict['x']
-        y_points = mini_dict['y']
-        plot.plot(x_points, y_points, 'b-') # path
-    return plot
-
 def generate_init_conditions(steps=10, step_size=0.1):
     """Generates one instance of the initial conditions 
     
@@ -134,7 +92,7 @@ def aggregator(t, _x, _y, h, mu, steps):
         'y': [_y],
         'mu': mu
     }
-    for i in range(30):
+    for i in range(15):
         response = rk4(mini_dict['t'][i], mini_dict['x'][i], mini_dict['y'][i], h, mu, f, g)
         mini_dict['t'].append(response[0])
         mini_dict['x'].append(response[1])
@@ -155,9 +113,34 @@ def main(n=10):
     # and the plot data and returns a plt object with the data embedded
     for mu in [-1.0, -0.5, -0.2, 0.0, 0.1, 0.5, 1.0]:
         # quiver plot
-        plt = grid_plot(mu)
+        x = np.linspace(-2.0, 2.0, 20)
+        y = np.linspace(-2.0, 2.0, 20)
+        X, Y = np.meshgrid(x, y)
+        u, v = np.zeros(X.shape), np.zeros(Y.shape)
+        ni, nj = X.shape
+
+        for i in range(ni):
+            for j in range(nj):
+                x = X[i, j]
+                y = Y[i, j]
+                yprime = F(mu, [x, y], f, g)
+                u[i, j] = yprime[0]
+                v[i, j] = yprime[1]
+
+        Q = plt.quiver(X, Y, u, v, color='r')
+
+        plt.title("mu: {}".format(mu))
+        plt.xlabel('$x$')
+        plt.ylabel('$y$')
+        plt.xlim([-2, 2])
+        plt.ylim([-2, 2])
         # Embed plot points data
-        plt = _plot(plt, inits)
-    plt.show()
+        for condition in inits:
+            t, _x, _y, step_size, steps = condition
+            mini_dict = aggregator(t, _x, _y, step_size, mu, steps)
+            x_points = mini_dict['x']
+            y_points = mini_dict['y']
+            plt.plot(x_points, y_points, 'b-') # path
+        plt.show()
 
 main()
